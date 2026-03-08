@@ -285,6 +285,33 @@ textarea {
     margin-top: 6px;
 }
 
+/* Counter */
+.counter {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.75em;
+}
+
+.counter span {
+    color: var(--text-dim);
+}
+
+.counter .val {
+    color: var(--green);
+    font-weight: 700;
+}
+
+.counter .over {
+    color: var(--red);
+    font-weight: 700;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
     .container { padding: 14px; }
@@ -337,6 +364,12 @@ textarea {
             </div>
         </div>
         <div id="preview" class="preview"></div>
+        <div id="counter" class="counter">
+            <span>Cover: <span class="val" id="c-cover">0</span></span>
+            <span>Segreto: <span class="val" id="c-secret">0</span> chars <span class="val" id="c-bytes">0</span> byte</span>
+            <span>ZW: <span class="val" id="c-zw">0</span></span>
+            <span>Totale: <span class="val" id="c-total">0</span>/280</span>
+        </div>
         <div class="btn-row">
             <button class="btn btn-primary" onclick="doEncode()">Encode</button>
             <button class="btn btn-secondary" onclick="doCopy()">Copia</button>
@@ -420,6 +453,26 @@ function encode(cover, secret, insertAt) {
     return cover.slice(0, pos) + payload + cover.slice(pos);
 }
 
+// Counter
+function updateCounter() {
+    const cover = document.getElementById('cover').value;
+    const secret = document.getElementById('secret').value;
+    const coverLen = cover.length;
+    const secretLen = secret.length;
+    const secretBytes = new TextEncoder().encode(secret).length;
+    const zw = secretBytes > 0 ? secretBytes * 9 - 1 : 0;
+    const total = coverLen + zw;
+
+    document.getElementById('c-cover').textContent = coverLen;
+    document.getElementById('c-secret').textContent = secretLen;
+    document.getElementById('c-bytes').textContent = secretBytes;
+    document.getElementById('c-zw').textContent = zw;
+
+    const totalEl = document.getElementById('c-total');
+    totalEl.textContent = total;
+    totalEl.className = total > 280 ? 'over' : 'val';
+}
+
 // Decode
 function decode(stego) {
     const zwc = [...stego].filter(c => c === ZERO || c === ONE || c === SEP).join('');
@@ -463,7 +516,8 @@ document.getElementById('position').addEventListener('change', function() {
     document.getElementById('after-word-field').style.display = this.value === 'after' ? '' : 'none';
     updatePreview();
 });
-document.getElementById('cover').addEventListener('input', updatePreview);
+document.getElementById('cover').addEventListener('input', () => { updatePreview(); updateCounter(); });
+document.getElementById('secret').addEventListener('input', updateCounter);
 document.getElementById('after-word').addEventListener('input', updatePreview);
 
 // Encode action
