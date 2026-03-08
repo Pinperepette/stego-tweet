@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta property="og:title" content="Stego Tweet — Tool gratuito">
+<meta property="og:description" content="Nascondi messaggi segreti dentro un tweet. Zero-width Unicode steganography tool.">
+<meta property="og:image" content="https://pinperepette.github.io/stego-tweet/card-preview.png">
+<meta property="og:url" content="https://pinperepette.github.io/stego-tweet/follow.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Pinperepette">
+<meta name="twitter:title" content="Stego Tweet — Tool gratuito">
+<meta name="twitter:description" content="Nascondi messaggi segreti dentro un tweet.">
+<meta name="twitter:image" content="https://pinperepette.github.io/stego-tweet/card-preview.png">
+<title>Stego Tweet</title>
+</head>
+<body>
+<script>
+var target = 'https://x.com/intent/follow?screen_name=Pinperepette';
+var isIOS = /iPhone|iPad/.test(navigator.userAgent);
+var isAndroid = /Android/.test(navigator.userAgent);
+
+if (isIOS || isAndroid) {
+    window.location = 'twitter://user?screen_name=Pinperepette';
+    setTimeout(function() {
+        window.location = target;
+    }, 800);
+} else {
+    window.location.replace(target);
+}
+</script>
+<noscript>
+<meta http-equiv="refresh" content="0;url=https://x.com/intent/follow?screen_name=Pinperepette">
+</noscript>
+</body>
+</html>
