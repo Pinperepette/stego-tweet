@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stego Tweet — Nascondi dati in un tweet</title>
+<meta name="description" content="Steganografia in tweet via zero-width Unicode characters. Nascondi messaggi segreti dentro testo normale.">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a2e;
+    --border: #2a2a3e;
+    --border-glow: #00ff4133;
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-bg: #00ff4110;
+    --red: #ff4444;
+    --orange: #ff8800;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --text-dimmer: #555;
+}
+
+body {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    padding: 40px 0 30px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 1.6em;
+    color: var(--green);
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+}
+
+.header h1 span {
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+.header p {
+    color: var(--text-dim);
+    font-size: 0.85em;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    background: var(--surface);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.9em;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab:first-child { border-right: 1px solid var(--border); }
+
+.tab.active {
+    background: var(--surface2);
+    color: var(--green);
+    box-shadow: inset 0 -2px 0 var(--green);
+}
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Form elements */
+.field {
+    margin-bottom: 16px;
+}
+
+.field label {
+    display: block;
+    color: var(--text-dim);
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 0.9em;
+    border-radius: 6px;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+}
+
+input[type="text"]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--border-glow);
+}
+
+textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+/* Position row */
+.position-row {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+
+.position-row .field:first-child {
+    flex: 0 0 auto;
+    min-width: 140px;
+}
+
+.position-row .field:last-child {
+    flex: 1;
+}
+
+/* Preview */
+.preview {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 0.85em;
+    margin-bottom: 16px;
+    min-height: 42px;
+    color: var(--text-dim);
+}
+
+.preview .payload-marker {
+    color: var(--red);
+    font-weight: 700;
+}
+
+/* Buttons */
+.btn-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.btn {
+    flex: 1;
+    padding: 14px 20px;
+    font-family: inherit;
+    font-size: 0.9em;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-primary {
+    background: var(--green);
+    color: var(--bg);
+}
+
+.btn-primary:active {
+    background: var(--green-dim);
+    transform: scale(0.98);
+}
+
+.btn-secondary {
+    background: var(--surface2);
+    color: var(--green);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:active {
+    background: var(--surface);
+    transform: scale(0.98);
+}
+
+/* Results */
+.result-box {
+    background: var(--surface2);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 8px;
+    word-break: break-all;
+    font-size: 0.9em;
+    color: var(--green);
+    box-shadow: 0 0 20px var(--border-glow);
+}
+
+.result-box.error {
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: none;
+}
+
+.stats {
+    color: var(--text-dim);
+    font-size: 0.75em;
+    padding: 4px 0;
+}
+
+.stats .ok { color: var(--green); }
+.stats .warn { color: var(--orange); }
+.stats .err { color: var(--red); }
+
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--green);
+    color: var(--bg);
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.85em;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.toast.show { opacity: 1; }
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+}
+
+.footer a {
+    color: var(--green);
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+.footer .sub {
+    color: var(--text-dimmer);
+    font-size: 0.7em;
+    margin-top: 6px;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .container { padding: 14px; }
+    .header { padding: 28px 0 20px; }
+    .header h1 { font-size: 1.3em; }
+    .position-row { flex-direction: column; gap: 0; }
+    .position-row .field:first-child { min-width: 100%; }
+    .btn { padding: 16px; font-size: 0.85em; }
+    .tab { padding: 12px 8px; font-size: 0.8em; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1>STEGO <span>//</span> TWEET</h1>
+        <p>Nascondi dati in un tweet con zero-width Unicode</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('encode')">Encode</button>
+        <button class="tab" onclick="switchTab('decode')">Decode</button>
+    </div>
+
+    <!-- ENCODE -->
+    <div id="panel-encode" class="panel active">
+        <div class="field">
+            <label>Testo visibile</label>
+            <input type="text" id="cover" placeholder="Il testo che tutti vedranno">
+        </div>
+        <div class="field">
+            <label>Messaggio segreto</label>
+            <input type="text" id="secret" placeholder="Il messaggio da nascondere">
+        </div>
+        <div class="position-row">
+            <div class="field">
+                <label>Posizione payload</label>
+                <select id="position">
+                    <option value="start">Inizio</option>
+                    <option value="mid" selected>Meta'</option>
+                    <option value="end">Fine</option>
+                    <option value="after">Dopo parola...</option>
+                </select>
+            </div>
+            <div class="field" id="after-word-field" style="display:none">
+                <label>Parola</label>
+                <input type="text" id="after-word" placeholder="Inserisci la parola">
+            </div>
+        </div>
+        <div id="preview" class="preview"></div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="doEncode()">Encode</button>
+            <button class="btn btn-secondary" onclick="doCopy()">Copia</button>
+        </div>
+        <div id="encode-result"></div>
+    </div>
+
+    <!-- DECODE -->
+    <div id="panel-decode" class="panel">
+        <div class="field">
+            <label>Tweet da analizzare</label>
+            <textarea id="stego" placeholder="Incolla qui il tweet sospetto"></textarea>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="doDecode()">Decode</button>
+            <button class="btn btn-secondary" onclick="doPaste()">Incolla</button>
+        </div>
+        <div id="decode-result"></div>
+    </div>
+
+    <div class="footer">
+        <a href="https://x.com/Pinperepette" target="_blank" rel="noopener">by Pinperepette</a>
+        <div class="sub">Zero-width steganography tool</div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ZERO = '\u200b';
+const ONE  = '\u200c';
+const SEP  = '\u200d';
+
+let lastEncoded = '';
+
+// Tabs
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (name === 'encode' && i === 0) || (name === 'decode' && i === 1));
+    });
+    document.getElementById('panel-encode').classList.toggle('active', name === 'encode');
+    document.getElementById('panel-decode').classList.toggle('active', name === 'decode');
+}
+
+// Toast
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Position
+function getInsertPos(cover) {
+    const pos = document.getElementById('position').value;
+    if (pos === 'start') return 0;
+    if (pos === 'end') return cover.length;
+    if (pos === 'after') {
+        const word = document.getElementById('after-word').value;
+        const idx = cover.indexOf(word);
+        if (idx >= 0) return idx + word.length;
+        return Math.floor(cover.length / 2);
+    }
+    return Math.floor(cover.length / 2);
+}
+
+// Encode
+function encode(cover, secret, insertAt) {
+    const bytes = new TextEncoder().encode(secret);
+    const chunks = [];
+    for (const b of bytes) {
+        let bits = '';
+        for (let i = 7; i >= 0; i--) {
+            bits += (b >> i) & 1 ? ONE : ZERO;
+        }
+        chunks.push(bits);
+    }
+    const payload = chunks.join(SEP);
+    const pos = insertAt !== undefined ? insertAt : Math.floor(cover.length / 2);
+    return cover.slice(0, pos) + payload + cover.slice(pos);
+}
+
+// Decode
+function decode(stego) {
+    const zwc = [...stego].filter(c => c === ZERO || c === ONE || c === SEP).join('');
+    if (!zwc) return '';
+    const raw = [];
+    for (const chunk of zwc.split(SEP)) {
+        if (chunk.length !== 8) continue;
+        let val = 0;
+        for (const c of chunk) {
+            val = (val << 1) | (c === ONE ? 1 : 0);
+        }
+        raw.push(val);
+    }
+    return new TextDecoder().decode(new Uint8Array(raw));
+}
+
+// Analyze
+function analyze(text) {
+    const chars = [...text];
+    const visible = chars.filter(c => c !== ZERO && c !== ONE && c !== SEP);
+    const nZero = chars.filter(c => c === ZERO).length;
+    const nOne = chars.filter(c => c === ONE).length;
+    const nSep = chars.filter(c => c === SEP).length;
+    const hidden = nZero + nOne + nSep;
+    return { visible: visible.length, hidden, nZero, nOne, nSep, total: chars.length };
+}
+
+// Preview
+function updatePreview() {
+    const cover = document.getElementById('cover').value;
+    const el = document.getElementById('preview');
+    if (!cover) { el.innerHTML = 'Anteprima posizione payload'; return; }
+    const pos = getInsertPos(cover);
+    const before = cover.slice(0, pos);
+    const after = cover.slice(pos);
+    el.innerHTML = before + '<span class="payload-marker">[PAYLOAD]</span>' + after;
+}
+
+// Position listeners
+document.getElementById('position').addEventListener('change', function() {
+    document.getElementById('after-word-field').style.display = this.value === 'after' ? '' : 'none';
+    updatePreview();
+});
+document.getElementById('cover').addEventListener('input', updatePreview);
+document.getElementById('after-word').addEventListener('input', updatePreview);
+
+// Encode action
+function doEncode() {
+    const cover = document.getElementById('cover').value;
+    const secret = document.getElementById('secret').value;
+    if (!cover || !secret) return;
+
+    const insertAt = getInsertPos(cover);
+    lastEncoded = encode(cover, secret, insertAt);
+    const stats = analyze(lastEncoded);
+    const fits = stats.total <= 280;
+
+    document.getElementById('encode-result').innerHTML =
+        '<div class="result-box">' +
+        [...lastEncoded].filter(c => c !== ZERO && c !== ONE && c !== SEP).join('') +
+        '</div>' +
+        '<div class="stats">' +
+        'Visibili: ' + stats.visible + ' &middot; ' +
+        'Nascosti: ' + stats.hidden + ' &middot; ' +
+        'Totale: ' + stats.total + '/280 ' +
+        (fits ? '<span class="ok">OK</span>' : '<span class="warn">TROPPO LUNGO, X tronchera\'</span>') +
+        '</div>';
+}
+
+// Copy
+async function doCopy() {
+    if (!lastEncoded) { doEncode(); }
+    if (!lastEncoded) return;
+    try {
+        await navigator.clipboard.writeText(lastEncoded);
+        showToast('Copiato. Incolla su X.');
+    } catch(e) {
+        showToast('Errore clipboard');
+    }
+}
+
+// Decode action
+function doDecode() {
+    const stego = document.getElementById('stego').value;
+    if (!stego) return;
+    const stats = analyze(stego);
+    const secret = decode(stego);
+
+    document.getElementById('decode-result').innerHTML =
+        (secret
+            ? '<div class="result-box">' + secret + '</div>'
+            : '<div class="result-box error">Nessun dato nascosto</div>') +
+        '<div class="stats">' +
+        'Visibili: ' + stats.visible + ' &middot; ' +
+        'Nascosti: ' + stats.hidden +
+        '</div>';
+}
+
+// Paste
+async function doPaste() {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('stego').value = text;
+        doDecode();
+    } catch(e) {
+        showToast('Errore clipboard');
+    }
+}
+</script>
+</body>
+</html>
